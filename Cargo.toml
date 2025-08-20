@@ -1,0 +1,8 @@
+[package]
+name = "ExetrixAnalysis"
+version = "0.0.1"
+edition = "2024"
+
+[dependencies]
+anyhow = "1.0"
+tempfile = "3"
