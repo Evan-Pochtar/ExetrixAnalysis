@@ -1,0 +1,394 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Performance Profile Report - {{ language|title }}</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+* { box-sizing: border-box; }
+body { 
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; 
+  margin: 0; padding: 20px; 
+  background: #f8fafc; 
+  color: #1e293b;
+  line-height: 1.5;
+}
+.container { max-width: 1400px; margin: 0 auto; }
+header { margin-bottom: 32px; }
+h1 { 
+  font-size: 2rem; font-weight: 700; margin: 0 0 8px 0; 
+  background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.subtitle { color: #64748b; font-size: 1.1rem; margin-bottom: 16px; }
+.language-badge { 
+  display: inline-block; 
+  background: {% if language == 'python' %}#3776ab{% elif language == 'javascript' %}#f7df1e{% elif language == 'java' %}#ed8b00{% else %}#3b82f6{% endif %}; 
+  color: {% if language == 'javascript' %}#000{% else %}white{% endif %}; 
+  padding: 4px 12px; 
+  border-radius: 16px; 
+  font-size: 0.875rem; 
+  font-weight: 500; 
+  text-transform: uppercase; 
+  margin-left: 8px;
+}
+.grid { display: grid; grid-template-columns: 2fr 1fr; gap: 24px; }
+.card { 
+  background: white; 
+  border-radius: 12px; 
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1), 0 1px 2px rgba(0,0,0,0.06);
+  overflow: hidden;
+}
+.card-header { 
+  background: #f1f5f9; 
+  padding: 16px 20px; 
+  border-bottom: 1px solid #e2e8f0;
+}
+.card-title { 
+  font-size: 1.25rem; font-weight: 600; margin: 0; 
+  display: flex; align-items: center; gap: 8px;
+}
+.card-content { padding: 0; }
+
+table { width: 100%; border-collapse: collapse; }
+thead th { 
+  background: #f8fafc; 
+  padding: 12px 16px; 
+  text-align: left; 
+  font-weight: 600; 
+  border-bottom: 2px solid #e2e8f0;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  user-select: none;
+}
+thead th:hover { background: #f1f5f9; }
+tbody td { 
+  padding: 12px 16px; 
+  border-bottom: 1px solid #f1f5f9;
+  vertical-align: middle;
+}
+tbody tr:hover { background: #f8fafc; }
+
+.function-name { 
+  font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace; 
+  font-size: 0.875rem; 
+  background: #f1f5f9; 
+  padding: 4px 8px; 
+  border-radius: 6px; 
+  display: inline-block;
+  max-width: 400px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.time-bar { 
+  height: 20px; 
+  background: linear-gradient(90deg, #3b82f6, #1d4ed8); 
+  border-radius: 4px; 
+  display: inline-block;
+  min-width: 2px;
+  position: relative;
+  overflow: hidden;
+}
+.time-bar::after {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+  animation: shimmer 2s infinite;
+}
+@keyframes shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+.metric { text-align: center; margin-bottom: 16px; }
+.metric-value { 
+  font-size: 1.5rem; font-weight: 700; 
+  color: #3b82f6; 
+  display: block; 
+}
+.metric-label { 
+  color: #64748b; 
+  font-size: 0.875rem; 
+  text-transform: uppercase; 
+  letter-spacing: 0.5px;
+}
+
+.memory-chart { 
+  height: 200px; 
+  padding: 16px; 
+  overflow-y: auto; 
+  background: #fafafa;
+}
+.memory-sample { 
+  display: flex; 
+  align-items: center; 
+  margin-bottom: 4px; 
+  font-size: 0.875rem;
+}
+.memory-time { 
+  width: 80px; 
+  color: #64748b; 
+  font-family: monospace;
+}
+.memory-bar-container { 
+  flex: 1; 
+  background: #e2e8f0; 
+  height: 16px; 
+  border-radius: 8px; 
+  overflow: hidden; 
+  margin: 0 12px;
+}
+.memory-bar { 
+  height: 100%; 
+  background: linear-gradient(90deg, #10b981, #059669); 
+  border-radius: 8px;
+  transition: width 0.3s ease;
+}
+.memory-value { 
+  width: 80px; 
+  text-align: right; 
+  color: #374151; 
+  font-weight: 500;
+}
+
+.meta-info { 
+  padding: 16px; 
+  background: #f8fafc; 
+  font-family: monospace; 
+  font-size: 0.875rem; 
+  line-height: 1.6;
+}
+.meta-row { 
+  display: flex; 
+  justify-content: space-between; 
+  margin-bottom: 4px;
+}
+.meta-label { color: #64748b; }
+.meta-value { 
+  color: #1e293b; 
+  font-weight: 500;
+}
+
+.sort-indicator { 
+  opacity: 0.5; 
+  margin-left: 4px; 
+  font-size: 0.75rem;
+}
+.sort-indicator.active { opacity: 1; }
+
+.empty-state { 
+  text-align: center; 
+  color: #64748b; 
+  padding: 40px; 
+}
+
+@media (max-width: 768px) {
+  .grid { grid-template-columns: 1fr; }
+  .container { padding: 16px; }
+  h1 { font-size: 1.5rem; }
+}
+</style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Performance Profile Report</h1>
+      <div class="subtitle">
+        Performance analysis of your {{ language }} application
+        <span class="language-badge">{{ language }}</span>
+      </div>
+    </header>
+
+    <div class="grid">
+      <div class="card">
+        <div class="card-header">
+          <h2 class="card-title">
+            Function Performance
+          </h2>
+        </div>
+        <div class="card-content">
+          <table id="func-table">
+            <thead>
+              <tr>
+                <th data-key="total_time">
+                  Total Time <span class="sort-indicator active">v</span>
+                </th>
+                <th data-key="exclusive_time">
+                  Exclusive Time <span class="sort-indicator">v</span>
+                </th>
+                <th data-key="call_count">
+                  Calls <span class="sort-indicator">v</span>
+                </th>
+                <th>Function</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for node in top_functions %}
+              <tr>
+                <td>
+                  <div style="display: flex; align-items: center; gap: 8px;">
+                    <div class="time-bar" style="width: {{ (node.total_time / max_time * 200) | round | int }}px;"></div>
+                    <span class="time-value">{{ "%.3f"|format(node.total_time) }}s</span>
+                  </div>
+                </td>
+                <td class="time-value">{{ "%.3f"|format(node.exclusive_time) }}s</td>
+                <td style="font-weight: 600; color: #3b82f6;">{{ "{:,}".format(node.call_count) }}</td>
+                <td><div class="function-name" title="{{ node.id }}">{{ node.id }}</div></td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div>
+        <div class="card" style="margin-bottom: 24px;">
+          <div class="card-header">
+            <h2 class="card-title">
+              Overview
+            </h2>
+          </div>
+          <div class="card-content">
+            <div style="padding: 16px;">
+              <div class="metric">
+                <span class="metric-value">{{ "%.3f"|format(wall_time) }}s</span>
+                <span class="metric-label">Total Runtime</span>
+              </div>
+              <div class="metric">
+                <span class="metric-value">{{ "{:,}".format(total_functions) }}</span>
+                <span class="metric-label">Functions Profiled</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <h2 class="card-title">
+              Memory Usage
+            </h2>
+          </div>
+          <div class="card-content">
+            <div class="memory-chart" id="memory-chart">
+              {% if memory_samples %}
+                {% set max_peak = memory_samples | map(attribute='peak') | max %}
+                {% for sample in memory_samples[::((memory_samples|length / 50) | round | int) or 1] %}
+                <div class="memory-sample">
+                  <div class="memory-time">{{ "%.2f"|format(sample.t) }}s</div>
+                  <div class="memory-bar-container">
+                    <div class="memory-bar" style="width: {{ (sample.peak / max_peak * 100) | round }}%;"></div>
+                  </div>
+                  <div class="memory-value">
+                    {% if sample.peak < 1024 %}{{ sample.peak }}B
+                    {% elif sample.peak < 1048576 %}{{ "%.1f"|format(sample.peak / 1024) }}KB
+                    {% else %}{{ "%.1f"|format(sample.peak / 1048576) }}MB{% endif %}
+                  </div>
+                </div>
+                {% endfor %}
+              {% else %}
+              <div class="empty-state">No memory samples recorded</div>
+              {% endif %}
+            </div>
+            <div class="meta-info">
+              <div class="meta-row">
+                <span class="meta-label">Wall Time:</span>
+                <span class="meta-value">{{ "%.3f"|format(wall_time) }}s</span>
+              </div>
+              <div class="meta-row">
+                <span class="meta-label">CPU Time:</span>
+                <span class="meta-value">{{ "%.3f"|format(cpu_time) }}s</span>
+              </div>
+              <div class="meta-row">
+                <span class="meta-label">Exit Code:</span>
+                <span class="meta-value">{{ meta.exit_code or 0 }}</span>
+              </div>
+              {% if peak_rss %}
+              <div class="meta-row">
+                <span class="meta-label">Peak RSS:</span>
+                <span class="meta-value">
+                  {% if peak_rss * 1024 < 1048576 %}{{ "%.1f"|format(peak_rss) }}KB
+                  {% else %}{{ "%.1f"|format(peak_rss / 1024) }}MB{% endif %}
+                </span>
+              </div>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script>
+    const report = {{ report_json | safe }};
+    const tbody = document.querySelector("#func-table tbody");
+    let nodes = report.nodes.slice();
+    let currentSort = { key: 'total_time', desc: true };
+
+    function formatTime(seconds) {
+      if (seconds < 0.001) return `${(seconds * 1000000).toFixed(0)}µs`;
+      if (seconds < 1) return `${(seconds * 1000).toFixed(1)}ms`;
+      return `${seconds.toFixed(3)}s`;
+    }
+
+    function renderTable() {
+      tbody.innerHTML = "";
+      if (nodes.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" class="empty-state">No functions profiled</td></tr>';
+        return;
+      }
+
+      const maxTime = Math.max(...nodes.map(n => n.total_time), 1e-9);
+
+      nodes.forEach(n => {
+        const tr = document.createElement("tr");
+        const barWidth = Math.max(2, Math.round((n.total_time / maxTime) * 200));
+        
+        tr.innerHTML = `
+          <td>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <div class="time-bar" style="width: ${barWidth}px;"></div>
+              <span>${formatTime(n.total_time)}</span>
+            </div>
+          </td>
+          <td>${formatTime(n.exclusive_time)}</td>
+          <td style="font-weight: 600; color: #3b82f6;">${n.call_count.toLocaleString()}</td>
+          <td><div class="function-name" title="${n.id}">${n.id}</div></td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function sortBy(key, desc = false) {
+      currentSort = { key, desc };
+      nodes.sort((a, b) => {
+        const aVal = a[key];
+        const bVal = b[key];
+        if (aVal === bVal) return 0;
+        return (aVal < bVal ? -1 : 1) * (desc ? -1 : 1);
+      });
+      
+      document.querySelectorAll('.sort-indicator').forEach(ind => ind.classList.remove('active'));
+      const activeHeader = document.querySelector(`th[data-key="${key}"] .sort-indicator`);
+      if (activeHeader) {
+        activeHeader.classList.add('active');
+        activeHeader.textContent = desc ? 'v' : '^';
+      }
+      
+      renderTable();
+    }
+
+    document.querySelectorAll("#func-table th[data-key]").forEach(th => {
+      th.addEventListener("click", () => {
+        const key = th.getAttribute("data-key");
+        const desc = currentSort.key === key ? !currentSort.desc : true;
+        sortBy(key, desc);
+      });
+    });
+
+    console.log('Profile report loaded with', nodes.length, 'functions');
+  </script>
+</body>
+</html>
