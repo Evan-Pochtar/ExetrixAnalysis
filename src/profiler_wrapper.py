@@ -2,6 +2,7 @@ import sys, os, time, tracemalloc, json, threading
 from collections import defaultdict, deque
 import traceback
 from jinja2 import Template
+import gc
 
 try:
     import resource
@@ -30,7 +31,6 @@ def is_user_code(frame):
     ]):
         return False
     
-    # skip framework noise
     function_name = frame.f_code.co_name
     if function_name in ['<module>', '__init__', '__enter__', '__exit__']:
         return False
@@ -45,29 +45,80 @@ def make_function_id_from_frame(frame):
     return f"{mod}.{name}() [{filename}]"
 
 def make_function_id_from_cfunc(cfunc):
-    # only track C functions that are likely to be user-relevant
     name = getattr(cfunc, "__name__", str(cfunc))
     if name in ['print', 'len', 'range', 'enumerate', 'zip', 'map', 'filter']:
         return None
     return f"<builtin>.{name}()"
 
+def get_system_info():
+    info = {'python_version': sys.version.split()[0]}
+    
+    if psutil:
+        try:
+            info.update({
+                'cpu_count': psutil.cpu_count(),
+                'cpu_freq': psutil.cpu_freq()._asdict() if psutil.cpu_freq() else None,
+                'total_memory': psutil.virtual_memory().total,
+                'available_memory': psutil.virtual_memory().available,
+            })
+        except Exception:
+            pass
+    
+    return info
+
 def profiler_main(report_dir, target_argv):
-    stats = {}  # id -> {'total_time': float, 'call_count': int, 'children_time': float}
+    stats = {}
     edges = defaultdict(lambda: {'call_count':0, 'total_time':0.0})
     lock = threading.Lock()
-    call_stack = deque()  # stack of (func_id, start_time, is_user_code)
-
-    # list of (t, current_bytes, peak_bytes)
+    call_stack = deque()
+    
     mem_samples = []
+    cpu_samples = []
+    gc_stats = []
     sampling = True
-
-    def mem_sampler():
+    start_time = time.perf_counter()
+    
+    def system_sampler():
+        sample_count = 0
         while sampling:
-            cur, peak = tracemalloc.get_traced_memory()
-            mem_samples.append((time.perf_counter(), cur, peak))
+            t = time.perf_counter() - start_time
+            
+            cur_mem, peak_mem = tracemalloc.get_traced_memory()
+            mem_samples.append({
+                't': t,
+                'current': cur_mem,
+                'peak': peak_mem
+            })
+            
+            if psutil:
+                try:
+                    process = psutil.Process()
+                    cpu_percent = process.cpu_percent()
+                    memory_info = process.memory_info()
+                    
+                    cpu_samples.append({
+                        't': t,
+                        'cpu_percent': cpu_percent,
+                        'rss': memory_info.rss,
+                        'vms': memory_info.vms
+                    })
+                except Exception:
+                    pass
+            
+            if sample_count % 20 == 0:
+                gc_gen_stats = gc.get_stats()
+                gc_counts = gc.get_count()
+                gc_stats.append({
+                    't': t,
+                    'counts': gc_counts,
+                    'collections': [gen['collections'] for gen in gc_gen_stats] if gc_gen_stats else []
+                })
+            
+            sample_count += 1
             time.sleep(0.05)
 
     tracemalloc.start(25)
+    gc.set_debug(gc.DEBUG_STATS)
 
     def prof(frame, event, arg):
         nonlocal call_stack, stats, edges
@@ -90,9 +141,17 @@ def profiler_main(report_dir, target_argv):
                 
             dur = t - start
             with lock:
-                st = stats.setdefault(fid, {'total_time':0.0, 'call_count':0, 'children_time':0.0})
+                st = stats.setdefault(fid, {
+                    'total_time': 0.0, 
+                    'call_count': 0, 
+                    'children_time': 0.0,
+                    'min_time': float('inf'),
+                    'max_time': 0.0
+                })
                 st['total_time'] += dur
                 st['call_count'] += 1
+                st['min_time'] = min(st['min_time'], dur)
+                st['max_time'] = max(st['max_time'], dur)
                 
                 parent_id = None
                 for parent_fid, parent_start, parent_is_user in reversed(call_stack):
@@ -101,7 +160,13 @@ def profiler_main(report_dir, target_argv):
                         break
                 
                 if parent_id:
-                    pst = stats.setdefault(parent_id, {'total_time':0.0, 'call_count':0, 'children_time':0.0})
+                    pst = stats.setdefault(parent_id, {
+                        'total_time': 0.0, 
+                        'call_count': 0, 
+                        'children_time': 0.0,
+                        'min_time': float('inf'),
+                        'max_time': 0.0
+                    })
                     pst['children_time'] += dur
                     ekey = (parent_id, fid)
                     edges[ekey]['call_count'] += 1
@@ -123,9 +188,17 @@ def profiler_main(report_dir, target_argv):
                 
             dur = t - start
             with lock:
-                st = stats.setdefault(fid, {'total_time':0.0, 'call_count':0, 'children_time':0.0})
+                st = stats.setdefault(fid, {
+                    'total_time': 0.0, 
+                    'call_count': 0, 
+                    'children_time': 0.0,
+                    'min_time': float('inf'),
+                    'max_time': 0.0
+                })
                 st['total_time'] += dur
                 st['call_count'] += 1
+                st['min_time'] = min(st['min_time'], dur)
+                st['max_time'] = max(st['max_time'], dur)
                 
                 parent_id = None
                 for parent_fid, parent_start, parent_is_user in reversed(call_stack):
@@ -134,13 +207,20 @@ def profiler_main(report_dir, target_argv):
                         break
                 
                 if parent_id:
-                    pst = stats.setdefault(parent_id, {'total_time':0.0, 'call_count':0, 'children_time':0.0})
+                    pst = stats.setdefault(parent_id, {
+                        'total_time': 0.0, 
+                        'call_count': 0, 
+                        'children_time': 0.0,
+                        'min_time': float('inf'),
+                        'max_time': 0.0
+                    })
                     pst['children_time'] += dur
                     ekey = (parent_id, fid)
                     edges[ekey]['call_count'] += 1
                     edges[ekey]['total_time'] += dur
 
-    sampler = threading.Thread(target=mem_sampler, daemon=True)
+    system_info = get_system_info()
+    sampler = threading.Thread(target=system_sampler, daemon=True)
     sampler.start()
 
     sys.setprofile(prof)
@@ -178,6 +258,7 @@ def profiler_main(report_dir, target_argv):
         sys.setprofile(None)
         sampling = False
         sampler.join(timeout=1.0)
+        final_mem_current, final_mem_peak = tracemalloc.get_traced_memory()
         tracemalloc.stop()
 
     nodes = []
@@ -185,12 +266,24 @@ def profiler_main(report_dir, target_argv):
         total = v.get('total_time', 0.0)
         children = v.get('children_time', 0.0)
         exclusive = total - children
+        call_count = v.get('call_count', 0)
+        min_time = v.get('min_time', 0.0)
+        max_time = v.get('max_time', 0.0)
+        
+        if min_time == float('inf'):
+            min_time = 0.0
+            
+        avg_time = total / call_count if call_count > 0 else 0.0
+        
         nodes.append({
             'id': fid,
             'total_time': total,
-            'call_count': v.get('call_count', 0),
+            'call_count': call_count,
             'children_time': children,
-            'exclusive_time': exclusive
+            'exclusive_time': exclusive,
+            'min_time': min_time,
+            'max_time': max_time,
+            'avg_time': avg_time
         })
 
     nodes.sort(key=lambda x: x['total_time'], reverse=True)
@@ -221,6 +314,20 @@ def profiler_main(report_dir, target_argv):
         except Exception:
             pass
 
+    final_gc_stats = gc.get_stats()
+    final_gc_counts = gc.get_count()
+    
+    summary_stats = {
+        'total_functions': len(nodes),
+        'total_calls': sum(n['call_count'] for n in nodes),
+        'most_called_function': max(nodes, key=lambda x: x['call_count'])['id'] if nodes else None,
+        'slowest_function': nodes[0]['id'] if nodes else None,
+        'hottest_function': max(nodes, key=lambda x: x['exclusive_time'])['id'] if nodes else None,
+        'peak_memory_tracemalloc': final_mem_peak,
+        'final_gc_counts': final_gc_counts,
+        'total_gc_collections': sum(gen['collections'] for gen in final_gc_stats) if final_gc_stats else 0
+    }
+
     report = {
         'meta': {
             'language': 'python',
@@ -229,14 +336,15 @@ def profiler_main(report_dir, target_argv):
             'cpu_time_s': end_cpu - start_cpu,
             'exit_code': exit_code,
             'timestamp': time.time(),
+            'system_info': system_info
         },
         'nodes': nodes,
         'edges': edge_list,
-        'memory_samples': [
-            {'t': t - mem_samples[0][0] if mem_samples else 0, 'current': cur, 'peak': peak} 
-            for (t, cur, peak) in mem_samples
-        ],
-        'peak_rss': peak_rss
+        'memory_samples': mem_samples,
+        'cpu_samples': cpu_samples,
+        'gc_samples': gc_stats,
+        'peak_rss': peak_rss,
+        'summary': summary_stats
     }
 
     os.makedirs(report_dir, exist_ok=True)
@@ -261,30 +369,8 @@ def generate_html_report(report_data: dict, output_path: str, report_dir: str) -
             f"HTML template file not found at {template_path}. "
         )
     
-    meta = report_data.get('meta', {})
-    nodes = report_data.get('nodes', [])
-    edges = report_data.get('edges', [])
-    memory_samples = report_data.get('memory_samples', [])
-    
-    total_functions = len(nodes)
-    max_time = max((n['total_time'] for n in nodes), default=0)
-    top_functions = nodes[:10]
-    
     template = Template(template_code)
-    html_output = template.render(
-        meta=meta,
-        nodes=nodes,
-        edges=edges,
-        memory_samples=memory_samples,
-        total_functions=total_functions,
-        max_time=max_time,
-        top_functions=top_functions,
-        language=meta.get('language', 'unknown'),
-        wall_time=meta.get('wall_time_s', 0),
-        cpu_time=meta.get('cpu_time_s', 0),
-        peak_rss=report_data.get('peak_rss'),
-        report_json=json.dumps(report_data)
-    )
+    html_output = template.render(report=report_data)
     
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
     with open(output_path, "w", encoding="utf-8") as f:
