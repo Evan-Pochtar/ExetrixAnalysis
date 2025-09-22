@@ -2,386 +2,9 @@
 <html>
   <head>
     <meta charset="utf-8" />
-    <title>Performance Profile Report - {{ report.meta.language|title }}</title>
+    <title>Performance Profile Report - {{ report.meta.language }}</title>
     <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <style>
-      * {
-        box-sizing: border-box;
-      }
-      body {
-        font-family:
-          -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
-        margin: 0;
-        padding: 20px;
-        background: #f8fafc;
-        color: #1e293b;
-        line-height: 1.5;
-      }
-      .container {
-        max-width: 1600px;
-        margin: 0 auto;
-      }
-      header {
-        margin-bottom: 32px;
-      }
-      h1 {
-        font-size: 2.5rem;
-        font-weight: 700;
-        margin: 0 0 8px 0;
-        background: linear-gradient(135deg, #3b82f6, #8b5cf6);
-        -webkit-background-clip: text;
-        background-clip: text;
-        -webkit-text-fill-color: transparent;
-      }
-      .subtitle {
-        color: #64748b;
-        font-size: 1.1rem;
-        margin-bottom: 16px;
-      }
-      .language-badge {
-        display: inline-block;
-        background: #3776ab;
-        color: white;
-        padding: 6px 16px;
-        border-radius: 20px;
-        font-size: 0.875rem;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        margin-left: 12px;
-      }
-
-      .grid {
-        display: grid;
-        grid-template-columns: 1fr 400px;
-        gap: 24px;
-        margin-bottom: 24px;
-      }
-
-      .stats-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-        gap: 16px;
-        margin-bottom: 24px;
-      }
-
-      .card {
-        background: white;
-        border-radius: 16px;
-        box-shadow:
-          0 4px 6px -1px rgba(0, 0, 0, 0.1),
-          0 2px 4px -1px rgba(0, 0, 0, 0.06);
-        overflow: hidden;
-        transition:
-          transform 0.2s,
-          box-shadow 0.2s;
-      }
-      .card:hover {
-        transform: translateY(-2px);
-        box-shadow:
-          0 10px 25px -3px rgba(0, 0, 0, 0.1),
-          0 4px 6px -2px rgba(0, 0, 0, 0.05);
-      }
-      .card-header {
-        background: linear-gradient(135deg, #f8fafc, #e2e8f0);
-        padding: 20px 24px;
-        border-bottom: 1px solid #e2e8f0;
-      }
-      .card-title {
-        font-size: 1.25rem;
-        font-weight: 600;
-        margin: 0;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        color: #1e293b;
-      }
-      .card-content {
-        padding: 0;
-      }
-
-      table {
-        width: 100%;
-        border-collapse: collapse;
-      }
-      thead th {
-        background: #f8fafc;
-        padding: 16px 20px;
-        text-align: left;
-        font-weight: 600;
-        border-bottom: 2px solid #e2e8f0;
-        cursor: pointer;
-        transition: all 0.2s;
-        user-select: none;
-        font-size: 0.875rem;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        color: #475569;
-      }
-      thead th:hover {
-        background: #f1f5f9;
-        color: #1e293b;
-      }
-      tbody td {
-        padding: 16px 20px;
-        border-bottom: 1px solid #f1f5f9;
-        vertical-align: middle;
-        font-size: 0.875rem;
-      }
-      tbody tr:hover {
-        background: #f8fafc;
-        transition: background-color 0.15s;
-      }
-
-      .function-name {
-        font-family:
-          "SF Mono", Monaco, "Cascadia Code", "JetBrains Mono", monospace;
-        font-size: 0.8rem;
-        background: #f1f5f9;
-        padding: 6px 10px;
-        border-radius: 8px;
-        display: inline-block;
-        max-width: 400px;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-        border-left: 3px solid #3b82f6;
-      }
-
-      .time-bar {
-        height: 24px;
-        background: linear-gradient(90deg, #3b82f6, #1d4ed8);
-        border-radius: 6px;
-        display: inline-block;
-        min-width: 3px;
-        position: relative;
-        overflow: hidden;
-        box-shadow: 0 1px 3px rgba(59, 130, 246, 0.3);
-      }
-      .time-bar::after {
-        content: "";
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: linear-gradient(
-          90deg,
-          transparent,
-          rgba(255, 255, 255, 0.3),
-          transparent
-        );
-        animation: shimmer 2s infinite;
-      }
-      @keyframes shimmer {
-        0% {
-          transform: translateX(-100%);
-        }
-        100% {
-          transform: translateX(100%);
-        }
-      }
-
-      .metric {
-        text-align: center;
-        padding: 20px;
-        background: linear-gradient(135deg, #f8fafc, #ffffff);
-        border-radius: 12px;
-        border: 1px solid #e2e8f0;
-      }
-      .metric-value {
-        font-size: 2rem;
-        font-weight: 800;
-        background: linear-gradient(135deg, #3b82f6, #8b5cf6);
-        -webkit-background-clip: text;
-        background-clip: text;
-        -webkit-text-fill-color: transparent;
-        display: block;
-        margin-bottom: 4px;
-      }
-      .metric-label {
-        color: #64748b;
-        font-size: 0.875rem;
-        text-transform: uppercase;
-        letter-spacing: 0.8px;
-        font-weight: 500;
-      }
-      .metric-subtitle {
-        color: #94a3b8;
-        font-size: 0.75rem;
-        margin-top: 4px;
-      }
-
-      .chart-container {
-        height: 300px;
-        padding: 24px;
-        position: relative;
-      }
-      .chart {
-        width: 100%;
-        height: 100%;
-        border: 1px solid #e2e8f0;
-        border-radius: 8px;
-        background: #fafafa;
-        position: relative;
-        overflow: hidden;
-        padding: 5px;
-      }
-
-      .timeline-item {
-        display: flex;
-        align-items: center;
-        margin-bottom: 8px;
-        padding: 4px 0;
-      }
-      .timeline-time {
-        width: 80px;
-        color: #64748b;
-        font-family: "SF Mono", monospace;
-        font-size: 0.75rem;
-        font-weight: 500;
-      }
-      .timeline-bar-container {
-        flex: 1;
-        background: #e2e8f0;
-        height: 20px;
-        border-radius: 10px;
-        overflow: hidden;
-        margin: 0 12px;
-        position: relative;
-      }
-      .memory-bar {
-        height: 100%;
-        background: linear-gradient(90deg, #10b981, #059669);
-        border-radius: 10px;
-        transition: width 0.3s ease;
-        box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.2);
-      }
-      .cpu-bar {
-        height: 100%;
-        background: linear-gradient(90deg, #f59e0b, #d97706);
-        border-radius: 10px;
-        transition: width 0.3s ease;
-        box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.2);
-      }
-      .timeline-value {
-        width: 100px;
-        text-align: right;
-        color: #374151;
-        font-weight: 500;
-        font-size: 0.75rem;
-      }
-
-      .system-info {
-        padding: 24px;
-        background: #f8fafc;
-        font-family: "SF Mono", Monaco, monospace;
-        font-size: 0.8rem;
-        line-height: 1.8;
-        border-left: 4px solid #3b82f6;
-      }
-      .system-row {
-        display: flex;
-        justify-content: space-between;
-        margin-bottom: 8px;
-        padding: 4px 0;
-      }
-      .system-label {
-        color: #64748b;
-        font-weight: 500;
-      }
-      .system-value {
-        color: #1e293b;
-        font-weight: 600;
-      }
-
-      .summary-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-        gap: 16px;
-        padding: 24px;
-        background: #f8fafc;
-      }
-      .summary-item {
-        text-align: center;
-      }
-      .summary-value {
-        font-size: 1.5rem;
-        font-weight: 700;
-        color: #3b82f6;
-        display: block;
-        margin-bottom: 4px;
-      }
-      .summary-label {
-        color: #64748b;
-        font-size: 0.8rem;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        font-weight: 500;
-      }
-
-      .sort-indicator {
-        opacity: 0.4;
-        margin-left: 6px;
-        font-size: 0.75rem;
-        transition: opacity 0.2s;
-      }
-      .sort-indicator.active {
-        opacity: 1;
-        color: #3b82f6;
-      }
-
-      .empty-state {
-        text-align: center;
-        color: #64748b;
-        padding: 60px 20px;
-        font-size: 0.875rem;
-      }
-
-      .badge {
-        display: inline-block;
-        padding: 2px 8px;
-        border-radius: 12px;
-        font-size: 0.75rem;
-        font-weight: 500;
-      }
-      .badge-success {
-        background: #dcfce7;
-        color: #166534;
-      }
-      .badge-warning {
-        background: #fef3c7;
-        color: #92400e;
-      }
-      .badge-error {
-        background: #fee2e2;
-        color: #991b1b;
-      }
-
-      @media (max-width: 1024px) {
-        .grid {
-          grid-template-columns: 1fr;
-        }
-        .stats-grid {
-          grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-        }
-      }
-      @media (max-width: 768px) {
-        .container {
-          padding: 16px;
-        }
-        h1 {
-          font-size: 2rem;
-        }
-        .card-header {
-          padding: 16px 20px;
-        }
-        .chart-container {
-          height: 200px;
-          padding: 16px;
-        }
-      }
-    </style>
+    <link rel="stylesheet" href="report.css" />
   </head>
   <body>
     <div class="container">
@@ -396,89 +19,27 @@
 
       <div class="stats-grid">
         <div class="metric">
-          <span class="metric-value"
-            >{{ "%.3f"|format(report.meta.wall_time_s) }}s</span
-          >
+          <span id="metric-wall-time" class="metric-value">-</span>
           <span class="metric-label">Total Runtime</span>
           <div class="metric-subtitle">Wall clock time</div>
         </div>
+
         <div class="metric">
-          <span class="metric-value"
-            >{{ "{:,}".format(report.summary.total_functions) }}</span
-          >
+          <span id="metric-functions" class="metric-value">-</span>
           <span class="metric-label">Functions</span>
           <div class="metric-subtitle">User code functions</div>
         </div>
+
         <div class="metric">
-          <span class="metric-value"
-            >{{ "{:,}".format(report.summary.total_calls) }}</span
-          >
+          <span id="metric-calls" class="metric-value">-</span>
           <span class="metric-label">Total Calls</span>
           <div class="metric-subtitle">Function invocations</div>
         </div>
+
         <div class="metric">
-          {% if report.summary.peak_memory_tracemalloc %} {% if
-          report.summary.peak_memory_tracemalloc < 1024 %}
-          <span class="metric-value"
-            >{{ report.summary.peak_memory_tracemalloc }}B</span
-          >
-          {% elif report.summary.peak_memory_tracemalloc < 1048576 %}
-          <span class="metric-value"
-            >{{ "%.1f"|format(report.summary.peak_memory_tracemalloc / 1024)
-            }}KB</span
-          >
-          {% else %}
-          <span class="metric-value"
-            >{{ "%.1f"|format(report.summary.peak_memory_tracemalloc / 1048576)
-            }}MB</span
-          >
-          {% endif %} {% else %}
-          <span class="metric-value">N/A</span>
-          {% endif %}
+          <span id="metric-peak-memory" class="metric-value">-</span>
           <span class="metric-label">Peak Memory</span>
           <div class="metric-subtitle">Traced allocations</div>
-        </div>
-      </div>
-
-      <div class="card" style="margin-bottom: 24px">
-        <div class="card-header">
-          <h2 class="card-title">Performance Summary</h2>
-        </div>
-        <div class="card-content">
-          <div class="summary-grid">
-            {% if report.summary.slowest_function %}
-            <div class="summary-item">
-              <span class="summary-value">Slowest Function</span>
-              <div class="summary-label">
-                {{ report.summary.slowest_function[:50] }}{% if
-                report.summary.slowest_function|length > 50 %}...{% endif %}
-              </div>
-            </div>
-            {% endif %} {% if report.summary.most_called_function %}
-            <div class="summary-item">
-              <span class="summary-value">Most Called</span>
-              <div class="summary-label">
-                {{ report.summary.most_called_function[:50] }}{% if
-                report.summary.most_called_function|length > 50 %}...{% endif %}
-              </div>
-            </div>
-            {% endif %} {% if report.summary.hottest_function %}
-            <div class="summary-item">
-              <span class="summary-value">Hottest Function</span>
-              <div class="summary-label">
-                {{ report.summary.hottest_function[:50] }}{% if
-                report.summary.hottest_function|length > 50 %}...{% endif %}
-              </div>
-            </div>
-            {% endif %}
-            <div class="summary-item">
-              <span class="summary-value"
-                >{{ "%.1f"|format((report.meta.wall_time_s -
-                report.meta.cpu_time_s) * 1000) }}ms</span
-              >
-              <div class="summary-label">I/O Wait Time</div>
-            </div>
-          </div>
         </div>
       </div>
 
@@ -519,68 +80,24 @@
             <div class="card-content">
               <div class="chart-container">
                 <div class="chart" id="memory-chart">
-                  {% if report.memory_samples %} {% set max_peak =
-                  report.memory_samples | map(attribute='peak') | max %} {% for
-                  sample in
-                  report.memory_samples[::((report.memory_samples|length / 40) |
-                  round | int) or 1] %}
-                  <div class="timeline-item">
-                    <div class="timeline-time">
-                      {{ "%.1f"|format(sample.t) }}s
-                    </div>
-                    <div class="timeline-bar-container">
-                      <div
-                        class="memory-bar"
-                        style="width: {{ (sample.peak / max_peak * 100) | round }}%;"
-                      ></div>
-                    </div>
-                    <div class="timeline-value">
-                      {% if sample.peak < 1024 %}{{ sample.peak }}B {% elif
-                      sample.peak < 1048576 %}{{ "%.1f"|format(sample.peak /
-                      1024) }}KB {% else %}{{ "%.1f"|format(sample.peak /
-                      1048576) }}MB{% endif %}
-                    </div>
-                  </div>
-                  {% endfor %} {% else %}
-                  <div class="empty-state">No memory samples recorded</div>
-                  {% endif %}
+                  <div id="memory-chart-content"></div>
                 </div>
               </div>
             </div>
           </div>
 
-          {% if report.cpu_samples %}
-          <div class="card" style="margin-bottom: 24px">
+          <div class="card" style="margin-bottom: 24px" id="cpu-card">
             <div class="card-header">
               <h2 class="card-title">CPU Usage Timeline</h2>
             </div>
             <div class="card-content">
               <div class="chart-container">
                 <div class="chart" id="cpu-chart">
-                  {% set max_cpu = report.cpu_samples |
-                  map(attribute='cpu_percent') | max %} {% for sample in
-                  report.cpu_samples[::((report.cpu_samples|length / 40) | round
-                  | int) or 1] %}
-                  <div class="timeline-item">
-                    <div class="timeline-time">
-                      {{ "%.1f"|format(sample.t) }}s
-                    </div>
-                    <div class="timeline-bar-container">
-                      <div
-                        class="cpu-bar"
-                        style="width: {{ (sample.cpu_percent / (max_cpu or 1) * 100) | round }}%;"
-                      ></div>
-                    </div>
-                    <div class="timeline-value">
-                      {{ "%.1f"|format(sample.cpu_percent) }}%
-                    </div>
-                  </div>
-                  {% endfor %}
+                  <div id="cpu-chart-content"></div>
                 </div>
               </div>
             </div>
           </div>
-          {% endif %}
 
           <div class="card">
             <div class="card-header">
@@ -590,73 +107,54 @@
               <div class="system-info">
                 <div class="system-row">
                   <span class="system-label">Python Version:</span>
-                  <span class="system-value"
-                    >{{ report.meta.system_info.python_version or 'Unknown'
-                    }}</span
-                  >
+                  <span id="sys-python-version" class="system-value">-</span>
                 </div>
                 <div class="system-row">
                   <span class="system-label">Wall Time:</span>
-                  <span class="system-value"
-                    >{{ "%.3f"|format(report.meta.wall_time_s) }}s</span
-                  >
+                  <span id="sys-wall-time" class="system-value">-</span>
                 </div>
                 <div class="system-row">
                   <span class="system-label">CPU Time:</span>
-                  <span class="system-value"
-                    >{{ "%.3f"|format(report.meta.cpu_time_s) }}s</span
-                  >
+                  <span id="sys-cpu-time" class="system-value">-</span>
                 </div>
                 <div class="system-row">
                   <span class="system-label">CPU Efficiency:</span>
-                  <span class="system-value"
-                    >{{ "%.1f"|format((report.meta.cpu_time_s /
-                    report.meta.wall_time_s * 100) if report.meta.wall_time_s >
-                    0 else 0) }}%</span
-                  >
+                  <span id="sys-cpu-eff" class="system-value">-</span>
                 </div>
                 <div class="system-row">
                   <span class="system-label">Exit Code:</span>
-                  <span class="system-value">
-                    <span
-                      class="badge {% if report.meta.exit_code == 0 %}badge-success{% else %}badge-error{% endif %}"
-                    >
-                      {{ report.meta.exit_code or 0 }}
-                    </span>
-                  </span>
+                  <span id="sys-exit-code" class="system-value"
+                    ><span id="exit-badge" class="badge">-</span></span
+                  >
                 </div>
-                {% if report.meta.system_info.cpu_count %}
-                <div class="system-row">
+                <div
+                  class="system-row"
+                  id="sys-cpu-cores-row"
+                  style="display: none"
+                >
                   <span class="system-label">CPU Cores:</span>
-                  <span class="system-value"
-                    >{{ report.meta.system_info.cpu_count }}</span
-                  >
+                  <span id="sys-cpu-cores" class="system-value">-</span>
                 </div>
-                {% endif %} {% if report.meta.system_info.total_memory %}
-                <div class="system-row">
+                <div
+                  class="system-row"
+                  id="sys-total-mem-row"
+                  style="display: none"
+                >
                   <span class="system-label">Total Memory:</span>
-                  <span class="system-value"
-                    >{{ "%.1f"|format(report.meta.system_info.total_memory /
-                    1073741824) }}GB</span
-                  >
+                  <span id="sys-total-mem" class="system-value">-</span>
                 </div>
-                {% endif %} {% if report.peak_rss %}
-                <div class="system-row">
+                <div
+                  class="system-row"
+                  id="sys-peak-rss-row"
+                  style="display: none"
+                >
                   <span class="system-label">Peak RSS:</span>
-                  <span class="system-value">
-                    {% if report.peak_rss * 1024 < 1048576 %}{{
-                    "%.1f"|format(report.peak_rss) }}KB {% else %}{{
-                    "%.1f"|format(report.peak_rss / 1024) }}MB{% endif %}
-                  </span>
+                  <span id="sys-peak-rss" class="system-value">-</span>
                 </div>
-                {% endif %} {% if report.summary.total_gc_collections %}
-                <div class="system-row">
+                <div class="system-row" id="sys-gc-row" style="display: none">
                   <span class="system-label">GC Collections:</span>
-                  <span class="system-value"
-                    >{{ report.summary.total_gc_collections }}</span
-                  >
+                  <span id="sys-gc" class="system-value">-</span>
                 </div>
-                {% endif %}
               </div>
             </div>
           </div>
@@ -665,24 +163,62 @@
     </div>
 
     <script>
-      const report = {{ report | tojson | safe }};
-      const tbody = document.querySelector("#func-table tbody");
-      let nodes = report.nodes.slice();
-      let currentSort = { key: 'total_time', desc: true };
+      const report = {{ report | json_encode | safe }};
 
       function formatTime(seconds) {
-        if (seconds < 0.000001) return `${(seconds * 1000000000).toFixed(0)}ns`;
-        if (seconds < 0.001) return `${(seconds * 1000000).toFixed(0)}µs`;
-        if (seconds < 1) return `${(seconds * 1000).toFixed(1)}ms`;
+        if (typeof seconds !== 'number') return 'N/A';
+        if (seconds < 0.000001) return `${(seconds * 1e9).toFixed(0)}ns`;
+        if (seconds < 0.001) return `${(seconds * 1e6).toFixed(0)}µs`;
+        if (seconds < 1) return `${(seconds * 1e3).toFixed(1)}ms`;
         return `${seconds.toFixed(3)}s`;
       }
 
-      function formatBytes(bytes) {
-        if (bytes < 1024) return `${bytes}B`;
-        if (bytes < 1048576) return `${(bytes / 1024).toFixed(1)}KB`;
-        if (bytes < 1073741824) return `${(bytes / 1048576).toFixed(1)}MB`;
-        return `${(bytes / 1073741824).toFixed(1)}GB`;
+      function formatBytes(n) {
+        if (typeof n !== 'number') return 'N/A';
+        if (n < 1024) return `${n}B`;
+        if (n < 1048576) return `${(n/1024).toFixed(1)}KB`;
+        if (n < 1073741824) return `${(n/1048576).toFixed(1)}MB`;
+        return `${(n/1073741824).toFixed(1)}GB`;
       }
+
+      function comma(n){
+        return (typeof n === 'number') ? n.toLocaleString() : String(n || '-');
+      }
+
+      document.getElementById('metric-wall-time').textContent = formatTime(report.meta.wall_time_s);
+      document.getElementById('metric-functions').textContent = comma(report.summary.total_functions);
+      document.getElementById('metric-calls').textContent = comma(report.summary.total_calls);
+      document.getElementById('metric-peak-memory').textContent = report.summary.peak_memory_tracemalloc ? formatBytes(report.summary.peak_memory_tracemalloc) : 'N/A';
+
+      document.getElementById('sys-python-version').textContent = (report.meta.system_info && report.meta.system_info.python_version) ? report.meta.system_info.python_version : 'Unknown';
+      document.getElementById('sys-wall-time').textContent = formatTime(report.meta.wall_time_s);
+      document.getElementById('sys-cpu-time').textContent = formatTime(report.meta.cpu_time_s);
+      document.getElementById('sys-cpu-eff').textContent = (report.meta.wall_time_s > 0 && report.meta.cpu_time_s) ? ((report.meta.cpu_time_s / report.meta.wall_time_s * 100).toFixed(1) + '%') : 'N/A';
+      const exitCode = report.meta.exit_code || 0;
+      const exitBadge = document.getElementById('exit-badge');
+      exitBadge.textContent = exitCode;
+      exitBadge.className = `badge ${exitCode === 0 ? 'badge-success' : 'badge-error'}`;
+
+      if (report.meta.system_info && report.meta.system_info.cpu_count) {
+        document.getElementById('sys-cpu-cores').textContent = report.meta.system_info.cpu_count;
+        document.getElementById('sys-cpu-cores-row').style.display = '';
+      }
+      if (report.meta.system_info && report.meta.system_info.total_memory) {
+        document.getElementById('sys-total-mem').textContent = (report.meta.system_info.total_memory/1073741824).toFixed(1) + 'GB';
+        document.getElementById('sys-total-mem-row').style.display = '';
+      }
+      if (report.peak_rss) {
+        document.getElementById('sys-peak-rss').textContent = formatBytes(report.peak_rss);
+        document.getElementById('sys-peak-rss-row').style.display = '';
+      }
+      if (report.summary && report.summary.total_gc_collections) {
+        document.getElementById('sys-gc').textContent = report.summary.total_gc_collections;
+        document.getElementById('sys-gc-row').style.display = '';
+      }
+
+      const tbody = document.querySelector("#func-table tbody");
+      let nodes = (report.nodes || []).slice();
+      let currentSort = { key: 'total_time', desc: true };
 
       function renderTable() {
         tbody.innerHTML = "";
@@ -697,7 +233,6 @@
         displayNodes.forEach(n => {
           const tr = document.createElement("tr");
           const barWidth = Math.max(3, Math.round((n.total_time / maxTime) * 250));
-
           tr.innerHTML = `
             <td>
               <div style="display: flex; align-items: center; gap: 10px;">
@@ -707,7 +242,7 @@
             </td>
             <td style="font-weight: 500;">${formatTime(n.exclusive_time)}</td>
             <td style="color: #8b5cf6; font-weight: 500;">${formatTime(n.avg_time)}</td>
-            <td style="font-weight: 600; color: #3b82f6;">${n.call_count.toLocaleString()}</td>
+            <td style="font-weight: 600; color: #3b82f6;">${comma(n.call_count)}</td>
             <td><div class="function-name" title="${n.id}">${n.id}</div></td>
           `;
           tbody.appendChild(tr);
@@ -723,22 +258,18 @@
       function sortBy(key, desc = false) {
         currentSort = { key, desc };
         nodes.sort((a, b) => {
-          const aVal = a[key];
-          const bVal = b[key];
+          const aVal = a[key] || 0;
+          const bVal = b[key] || 0;
           if (aVal === bVal) return 0;
           return (aVal < bVal ? -1 : 1) * (desc ? -1 : 1);
         });
 
-        document.querySelectorAll('.sort-indicator').forEach(ind => {
-          ind.classList.remove('active');
-          ind.textContent = '▼';
-        });
+        document.querySelectorAll('.sort-indicator').forEach(ind => { ind.classList.remove('active'); ind.textContent = '▼'; });
         const activeHeader = document.querySelector(`th[data-key="${key}"] .sort-indicator`);
         if (activeHeader) {
           activeHeader.classList.add('active');
           activeHeader.textContent = desc ? '▼' : '▲';
         }
-
         renderTable();
       }
 
@@ -751,6 +282,53 @@
       });
 
       renderTable();
+
+      function renderMemoryTimeline() {
+        const container = document.getElementById('memory-chart-content');
+        const samples = report.memory_samples || [];
+        if (!samples.length) {
+          container.innerHTML = '<div class="empty-state">No memory samples recorded</div>';
+          return;
+        }
+        const maxPeak = Math.max(...samples.map(s => s.peak || 0), 1);
+        const step = Math.max(1, Math.floor(samples.length / 40));
+        const out = [];
+        for (let i = 0; i < samples.length; i += step) {
+          const s = samples[i];
+          const w = Math.round(( (s.peak || 0) / maxPeak) * 100);
+          out.push(`<div class="timeline-item">
+            <div class="timeline-time">${(s.t||0).toFixed(1)}s</div>
+            <div class="timeline-bar-container"><div class="memory-bar" style="width:${w}%;"></div></div>
+            <div class="timeline-value">${formatBytes(s.peak||0)}</div>
+          </div>`);
+        }
+        container.innerHTML = out.join('');
+      }
+
+      function renderCpuTimeline() {
+        const container = document.getElementById('cpu-chart-content');
+        const samples = report.cpu_samples || [];
+        if (!samples.length) {
+          document.getElementById('cpu-card').style.display = 'none';
+          return;
+        }
+        const maxCpu = Math.max(...samples.map(s => s.cpu_percent || 0), 1);
+        const step = Math.max(1, Math.floor(samples.length / 40));
+        const out = [];
+        for (let i = 0; i < samples.length; i += step) {
+          const s = samples[i];
+          const w = Math.round(((s.cpu_percent||0) / maxCpu) * 100);
+          out.push(`<div class="timeline-item">
+            <div class="timeline-time">${(s.t||0).toFixed(1)}s</div>
+            <div class="timeline-bar-container"><div class="cpu-bar" style="width:${w}%;"></div></div>
+            <div class="timeline-value">${(s.cpu_percent||0).toFixed(1)}%</div>
+          </div>`);
+        }
+        container.innerHTML = out.join('');
+      }
+
+      renderMemoryTimeline();
+      renderCpuTimeline();
 
       console.log('Performance report loaded:', {
         functions: nodes.length,
